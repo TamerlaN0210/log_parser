@@ -2,7 +2,7 @@ import mysql.connector
 
 
 mydb = mysql.connector.connect(host="localhost", user="root", password="", database="logs_data")
-mycursor = mydb.cursor()
+mycursor = mydb.cursor(buffered=True)
 
 
 main_url = 'https://all_to_the_bottom.com/'
@@ -14,6 +14,7 @@ class Parser:
     goods = set()
     sections = set()
     users = set()
+    carts = set()
 
     def __init__(self):
         print('parser was created')
@@ -25,18 +26,29 @@ class Parser:
             if section_and_good[0] != '':
                 if section_and_good[0] not in Parser.sections:  # добавляем раздел, если такого не существует
                     Parser.sections.add(section_and_good[0])
-                    query = ''.join(['INSERT INTO `sections`(`name`) VALUES (', section_and_good[0], ');'])
+                    query = str()
+                    query = ''.join(['INSERT INTO `sections`(`name`) VALUES ("', section_and_good[0], '");'])
+                    mycursor.execute(query)
+                    mydb.commit()
             if len(section_and_good) > 1:
                 if section_and_good[1] not in Parser.goods and section_and_good[1] != '':
                     #  добавляем товар, если такого не существует
                     Parser.goods.add(section_and_good[1])
-                    query = ''.join([query, 'INSERT INTO `goods`(`name`, `section`) VALUES (', section_and_good[1],
-                                     ', (SELECT `id` FROM `sections` WHERE "name" = ', section_and_good[0], '));'])
+                    query = str()
+                    query = ''.join([query, 'INSERT INTO `goods`(`name`, `section`) VALUES ("', section_and_good[1],
+                                     '", (SELECT `id` FROM `sections` WHERE `name` = "', section_and_good[0], '"));'])
+
+                    mycursor.execute(query)
+                    mydb.commit()
             ip = array[-2].split('.')  # делим ip на разряды
-            if array[6] not in Parser.ips:
-                Parser.ips.add(array[6])
+            if array[-2] not in Parser.ips:
+                Parser.ips.add(array[-2])
+                query = str()
                 query = ''.join([query, 'INSERT INTO `ip`(`adress1`,`adress2`,`adress3`,`adress4`) VALUES ("',
                                  ip[0], '","', ip[1], '","', ip[2], '","', ip[3], '");'])
+                mycursor.execute(query)
+                mydb.commit()
+            query = str()
             query = ''.join([query, 'INSERT INTO `actions`(`datetime`, `hash`, `ip`, `type`,`section`,`good`) VALUES ("',
                              ' '.join([array[2], array[3]]), '","', array[4], '",',
                              '(SELECT `id` FROM `ip` WHERE `adress1` = "', ip[0],
@@ -45,13 +57,15 @@ class Parser:
             if section_and_good[0] == '':  # если нет категории, т.е. главная страница сайта, то ставим NULL
                 query = ''.join([query, 'NULL,'])
             else:
-                query = ''.join([query, '(SELECT `id` FROM `sections` WHERE "name" = ', section_and_good[0], '), '])
+                query = ''.join([query, '(SELECT `id` FROM `sections` WHERE `name` = "', section_and_good[0], '"), '])
             if len(section_and_good) == 1:  # если просмотр категории без товара, то товар NULL
                 query = ''.join([query, 'NULL);'])
             elif len(section_and_good) > 1 and section_and_good[1] == '':
                 query = ''.join([query, 'NULL);'])
             elif len(section_and_good) > 1 and section_and_good[1] != '':
                 query = ''.join([query, '(SELECT `id` FROM `goods` WHERE `name` = "', section_and_good[1], '"));'])
+            mycursor.execute(query)
+            mydb.commit()
             # print(section_and_good[0])
             # if len(section_and_good) > 1: print(section_and_good[1])
             # print(query) для отладки
@@ -63,48 +77,91 @@ class Parser:
             # разбираем параметры запроса из URL
             add_info = [item.split('=') for item in array[-1].split('?')[1].split('&')]
             # код ниже сопоставляет good.id и good.id_from_logs
-            query = ''.join([query,'SELECT (@ip_id := `id`) FROM `ip` WHERE ',
-                    '`adress1` = "', ip[0], '" AND `adress2` = "', ip[1], '" AND ',
-                    '`adress3` = "', ip[2], '" AND `adress4` = "', ip[3], '";'])
-            query = ''.join([query, 'SELECT (@good_id :=`good`) FROM `actions WHERE `datetime` = '
-                                    '(SELECT MAX(datetime) '
-                                    'FROM (SELECT * FROM `actions` WHERE `ip` = @ip_id)) AND `ip`=@ip_id;'])
-            query = ''.join([query, 'UPDATE `goods` SET `id_from_logs` = "', add_info[0][1], '" WHERE `id` =@good_id;'])
+            query = str()
+            query = ''.join([query, 'SELECT `id` FROM `ip` WHERE `adress1` = "', ip[0],
+                             '" AND `adress2` = "', ip[1], '" AND `adress3` = "', ip[2],
+                             '" AND `adress4` = "', ip[3], '";'])
+            mycursor.execute(query)
+            mydb.commit()
+            ip_id = str(mycursor.fetchone()[0])
+            query = str()
+            query = ''.join([query, 'SELECT `good` FROM `actions` WHERE `datetime` = (SELECT MAX(`datetime`) ',
+                             'FROM `actions` WHERE `ip` = "', ip_id, '") AND `ip`= "', ip_id, '";'])
+            mycursor.execute(query)
+            mydb.commit()
+            good_id = str(mycursor.fetchone()[0])
+            query = str()
+            query = ''.join([query, 'UPDATE `goods` SET `id_from_logs` = "', add_info[0][1], '" WHERE `id` = "', good_id, '";'])
+            mycursor.execute(query)
+            mydb.commit()
             # теперь добавляем товар в корзину
-            query = ''.join([query, 'INSERT INTO `carts`(`cart_id`) VALUES ("', add_info[2][1], '";'])
-            query = ''.join([query, 'INSERT INTO `goods_and_carts`(`cart_id`, `good_id`, `good_amount`) VALUES ',
+            if add_info[2][1] not in Parser.carts:
+                Parser.carts.add(add_info[2][1])
+                query = str()
+                query = ''.join([query, 'INSERT INTO `carts`(`cart_id`) VALUES ("', add_info[2][1], '");'])
+                mycursor.execute(query)
+                mydb.commit()
+            query = str()
+            query = ''.join([query, 'INSERT INTO `goods_in_carts`(`cart_id`, `good_id`, `good_amount`) VALUES (',
                              '(SELECT `id` FROM `carts` WHERE `cart_id` = "', add_info[2][1], '"), ',
                              '(SELECT `id` FROM `goods` WHERE `id_from_logs` = "', add_info[0][1], '"), ',
-                             '"', add_info[1][1], '";'])
+                             '"', add_info[1][1], '");'])
+            mycursor.execute(query)
+            mydb.commit()
             # добавляем запись о самом действии
+            query = str()
             query = ''.join([query, 'INSERT INTO `actions`(`datetime`,`hash`,`ip`,`type`,`id_goods_in_carts`) VALUES ("',
                              ' '.join([array[2], array[3]]), '","', array[4], '",',
                              '(SELECT `id` FROM `ip` WHERE `adress1` = "', ip[0],
                              '" AND `adress2` = "', ip[1], '" AND `adress3` = "', ip[2],
                              '" AND `adress4` = "', ip[3], '"), "add", ',
-                             '(SELECT LAST_INSERT_ID())'])
-            # print('parser_add')
+                             '(SELECT LAST_INSERT_ID()))'])
+            mycursor.execute(query)
+            mydb.commit()
+            print('parser_add')
         if parse_type == 'pay':
             ip = array[-2].split('.')  # делим ip на разряды
             # разбираем параметры запроса из URL
             pay_info = [item.split('=') for item in array[-1].split('?')[1].split('&')]
-            query = ''.join([query, 'INSERT INTO `users`(`user_id`) VALUES ("', pay_info[0][1], '");'])
-            query = ''.join([query, 'UPDATE `carts` SET `user_id`=(SELECT LAST_INSERT_ID()) WHERE `cart_id`="',
-                             pay_info[1][1], '";'])
-            query = ''.join([query, 'INSERT INTO `actions`(`datetime`, `hash`, `ip`, `type`,`id_carts`) VALUES ("',
+            if pay_info[0][1] not in Parser.users:
+                Parser.users.add(pay_info[0][1])
+                query = ''.join(['INSERT INTO `users`(`user_id`) VALUES ("', pay_info[0][1], '");'])
+                mycursor.execute(query)
+                mydb.commit()
+            query = ''.join(['UPDATE `carts` SET `user_id`=(SELECT `id` FROM `users` WHERE `user_id`= "', pay_info[0][1], '") WHERE `cart_id`="',
+                             pay_info[1][1], '" AND `user_id` IS NULL;'])
+            mycursor.execute(query)
+            mydb.commit()
+            query = ''.join(['INSERT INTO `actions`(`datetime`, `hash`, `ip`, `type`,`id_carts`) VALUES ("',
                              ' '.join([array[2], array[3]]), '","', array[4], '",',
                              '(SELECT `id` FROM `ip` WHERE `adress1` = "', ip[0],
                              '" AND `adress2` = "', ip[1], '" AND `adress3` = "', ip[2],
-                             '" AND `adress4` = "', ip[3], '"), "pay", (SELECT LAST_INSERT_ID());'])
+                             '" AND `adress4` = "', ip[3], '"), "pay", (SELECT `id` FROM `carts` WHERE `cart_id`="',
+                             pay_info[1][1], '"));'])
+            mycursor.execute(query)
+            mydb.commit()
             #print('parser_pay')
         if parse_type == 'confirm_pay':
             ip = array[-2].split('.')  # делим ip на разряды
             cart_number = array[-1][len(main_url)::].split('/')[0].split('_')[2]
-            query = ''.join([query, 'UPDATE `carts` SET `is_payed`="1" WHERE `cart_id`="', cart_number, '";'])
+            query = ''.join(['UPDATE `carts` SET `is_payed`="1" WHERE `cart_id`="', cart_number, '";'])
+            mycursor.execute(query)
+            mydb.commit()
+            query = ''.join(['INSERT INTO `actions`(`datetime`, `hash`, `ip`, `type`,`id_carts`) VALUES ("',
+                             ' '.join([array[2], array[3]]), '","', array[4], '",',
+                             '(SELECT `id` FROM `ip` WHERE `adress1` = "', ip[0],
+                             '" AND `adress2` = "', ip[1], '" AND `adress3` = "', ip[2],
+                             '" AND `adress4` = "', ip[3], '"), "check", (SELECT `id` FROM `carts` WHERE `cart_id`="',
+                             cart_number, '"));'])
+            mycursor.execute(query)
+            mydb.commit()
             #print('parser_confirm_pay')
-        mycursor.execute(query, multi=True)
-        mydb.commit()
-        print("wait")
+        # for result in mycursor.execute(query, multi=True):
+        #     print()
+        # mydb.commit()
+        # print("wait")
+
+
 if __name__ == '__main__':
     print(mydb.is_connected())
     myparser = Parser()
