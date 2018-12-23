@@ -66,12 +66,7 @@ class Parser:
                 query = ''.join([query, '(SELECT `id` FROM `goods` WHERE `name` = "', section_and_good[1], '"));'])
             mycursor.execute(query)
             mydb.commit()
-            # print(section_and_good[0])
-            # if len(section_and_good) > 1: print(section_and_good[1])
-            # print(query) для отладки
-            # input()
-            # print('#################')
-            # '(SELECT `id` FROM `ip` WHERE `adress1` = ', ip[0], ' AND `adress2` = ', ip[1], ' AND `adress3` = ', ip[2], ' AND `adress4` = ', ip[3], ')'
+
         if parse_type == 'add':
             ip = array[-2].split('.')  # делим ip на разряды
             # разбираем параметры запроса из URL
@@ -155,36 +150,23 @@ class Parser:
                              cart_number, '"));'])
             mycursor.execute(query)
             mydb.commit()
-            #print('parser_confirm_pay')
-        # for result in mycursor.execute(query, multi=True):
-        #     print()
-        # mydb.commit()
-        # print("wait")
 
 
 if __name__ == '__main__':
     print(mydb.is_connected())
     myparser = Parser()
     path_to_logs = 'C:/Users/user/Downloads/logs.txt'
-    temp = input()
+    temp = input('Введите имя файла или полный путь до него: ')
     if temp != '':
         path_to_logs = temp
     file = open(path_to_logs)
     for line in file:
         temp = str.split(line)
         if temp[-1].find('success_pay_') != -1:
-            # print(temp)
-            # print('check')
             myparser.parse(temp, 'confirm_pay')
         elif temp[-1].find('?') == -1:  # если -1, значит вхождения строки нет
-            # print(temp)
-            # print('watch')
             myparser.parse(temp, 'watch')
         elif temp[-1].find('cart?') != -1:
-            # print(temp)
-            # print('cart')
             myparser.parse(temp, 'add')
         elif temp[-1].find('pay?') != -1:
-            # print(temp)
-            # print('pay')
             myparser.parse(temp, 'pay')
