@@ -1,5 +1,6 @@
 from db_creator import DbCreator
 from log_parser import Parser
+from ip import IpCompare
 
 if __name__ == '__main__':
     print('Для обработки логов требуется подключиться к вашей БД MySQL.',
@@ -17,5 +18,16 @@ if __name__ == '__main__':
     myparser = Parser()
     myparser.connect_to_bd(db_ip, db_username, db_password, db_name)
     myparser.read()
-    #todo: 3. Сопоставление ip к стране
+    ip_compare = IpCompare(host=db_ip, user=db_username, password=db_password, database=db_name, max_ip=100,
+                           pause_time=62)
+    print('Требуется сопоставить к какой стране относиться IP адресс.')
+    print('Нажмите 1 для сопоставления IP с помощью файла-словаря')
+    print('Нажмите 2 для сопоставления IP с помощью API сайта "ip-api.com"')
+    option = int(input())
+    if option == 1:
+        print('Вы выбрали сопоставление из файла-словаря')
+        ip_compare.compare('file')
+    elif option == 2:
+        print('Вы выбрали сопоставление с помощью API сайта "ip-api.com"')
+        ip_compare.compare('web')
 

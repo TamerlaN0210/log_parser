@@ -50,9 +50,9 @@ class IpCompare:
             print('Обработано {} IP из {}'.format(self.max_ip * (k + 1), len(ip_list)))
             sleep(self.pause_time)
 
-    def compare(self, type: str):
+    def compare(self, option: str):
         '''type: 'web' or 'file' '''
-        if type == 'web':
+        if option == 'web':
             ip_list = self.get_ip()
             for elem in ip_list:
                 elem['query'] = elem.pop('ip')
@@ -64,13 +64,13 @@ class IpCompare:
             while k < len(ip_list) // self.max_ip + 1:
                 ip_list_temp = ip_list[self.max_ip*k: self.max_ip*(k+1)]
                 k += 1
-                print(ip_list_temp)
+                # print(ip_list_temp)
                 response = requests.post('http://ip-api.com/batch', json=ip_list_temp)
                 ip_country = ip_country + response.json()
-                print(response.json())
+                # print(response.json())
                 self.set_country_from_web(response.json())
                 sleep(self.pause_time)
-        elif type == 'file':
+        elif option == 'file':
             file_name = input('Введите имя файла или полный путь до него: ')
             self.set_country_from_file(file_name)
 
@@ -95,8 +95,17 @@ class IpCompare:
         connector.close()
 
     def set_country_from_file(self, ip_country_file: str):
+        is_file_correct = False
+        while not is_file_correct:
+            try:
+                file = open(ip_country_file, 'r')
+                is_file_correct = True
+            except IOError:
+                ip_country_file = input('Неправильно задан путь, либо файла по такому пути не существует. '
+                                        'Введите правильный путь:')
+                is_file_correct = False
+
         print('Началось сопоставление.')
-        file = open(ip_country_file, 'r')
         ip_country = list()
         for line in file:
             data = line.split('|')
@@ -125,6 +134,6 @@ class IpCompare:
 
 
 if __name__ == '__main__':
-    ip_compare = IpCompare(host="localhost", user="root", password="", database="logs_data", max_ip=100, pause_time=62)
+    ip_compare = IpCompare(host="localhost", user="root", password="", database="delete_this", max_ip=100, pause_time=62)
     ip_compare.compare('file')
     #ip_compare.create_ip_country_file('test.txt')
