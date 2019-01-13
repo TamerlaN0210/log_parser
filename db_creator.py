@@ -153,6 +153,7 @@ COMMIT;
     def create(self, host, user, password):
         db_name = input('Введите название на латинице для базы данных о логах: ')
         self.__db_name = db_name.replace(' ', '_')
+        print('Создание БД "{}"...'.format(self.__db_name))
         query = 'CREATE DATABASE {}'.format(self.__db_name)
         mydb = mysql.connector.connect(host=host, user=user, password=password)
         mycursor = mydb.cursor(buffered=True)
@@ -165,4 +166,4 @@ COMMIT;
             pass
         mydb.commit()
         mydb.close()
-        print('Структура базы данных "{}" была создана'.format(db_name))
+        print('Структура базы данных "{}" была создана'.format(self.__db_name))
