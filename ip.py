@@ -64,10 +64,8 @@ class IpCompare:
             while k < len(ip_list) // self.max_ip + 1:
                 ip_list_temp = ip_list[self.max_ip*k: self.max_ip*(k+1)]
                 k += 1
-                # print(ip_list_temp)
                 response = requests.post('http://ip-api.com/batch', json=ip_list_temp)
                 ip_country = ip_country + response.json()
-                # print(response.json())
                 self.set_country_from_web(response.json())
                 sleep(self.pause_time)
         elif option == 'file':
@@ -120,7 +118,6 @@ class IpCompare:
                     'WHERE `adress1`=\'{}\' AND `adress2`=\'{}\' AND `adress3`=\'{}\' AND `adress4`=\'{}\''. \
                 format(elem.get('country'), elem.get('countryCode'),
                        elem.get('ip1'), elem.get('ip2'), elem.get('ip3'), elem.get('ip4'))
-            #print(query)
             cursor.execute(query)
             connector.commit()
         print('Сопоставление успешно завершено.')

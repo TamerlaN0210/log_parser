@@ -2,6 +2,9 @@ import mysql.connector
 
 
 class DbCreator:
+    """
+    Данный класс содержит код для создания структуры БД для работы парсера
+    """
     __db_struct_creation_query = """SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET AUTOCOMMIT = 0;
 START TRANSACTION;
