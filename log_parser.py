@@ -153,9 +153,7 @@ class Parser:
             self.mydb.commit()
 
     def read(self):
-        # print(self.mydb.is_connected())
-        # todo поменять мое расположение файла на стандартный путь
-        path_to_logs = 'logs/logs.txt'
+        path_to_logs = 'files/logs.txt'
         temp = input('Введите имя файла или полный путь до него: ')
         if temp != '':
             path_to_logs = temp
